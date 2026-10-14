@@ -45,6 +45,67 @@ int main(void)
     db_close();
     printf("[PASS] db_close 可重复调用\n");
 
+        /* ---- 测试6：db_execute 更新成功并返回受影响行数 ---- */
+    {
+        int n;
+
+        if (db_connect(DB_HOST, DB_USER, DB_PASS, DB_NAME) != ERR_OK) {
+            printf("[FAIL] 测试6 前置连接失败: %s\n", db_error());
+            return 1;
+        }
+
+        n = db_execute("UPDATE t_medicine SET stock=77 WHERE med_id='TEST_M01'");
+        if (n == 1) {
+            printf("[PASS] db_execute 更新成功，受影响行数=%d\n", n);
+        } else {
+            printf("[FAIL] 期望受影响行数 1，实际 %d，错误: %s\n", n, db_error());
+            return 1;
+        }
+
+        /* 回读确认值真的落库了（不只看返回值） */
+        n = db_execute("UPDATE t_medicine SET stock=77 WHERE med_id='TEST_M01'");
+        if (n == 0) {
+            printf("[PASS] 重复写相同值返回 0（MySQL 的 UPDATE 语义）\n");
+        } else {
+            printf("[FAIL] 期望 0，实际 %d\n", n);
+        }
+    }
+
+    /* ---- 测试7：条件不匹配时返回 0，而不是错误 ---- */
+    {
+        int n = db_execute("UPDATE t_medicine SET stock=0 WHERE med_id='NOT_EXIST_XXX'");
+        if (n == 0) {
+            printf("[PASS] 未匹配到行时返回 0（成功但无改动）\n");
+        } else {
+            printf("[FAIL] 期望 0，实际 %d，错误: %s\n", n, db_error());
+            return 1;
+        }
+    }
+
+    /* ---- 测试8：SQL 语法错误必须返回负错误码，且能拿到原因 ---- */
+    {
+        int n = db_execute("UPDATE t_medicine SET no_such_column=1");
+        if (n < 0) {
+            printf("[PASS] SQL 错误被捕获，码=%d，原因: %s\n", n, db_error());
+        } else {
+            printf("[FAIL] 错误 SQL 竟然返回 %d\n", n);
+            return 1;
+        }
+    }
+
+    /* ---- 测试9：未连接时必须返回 ERR_DB_CONN ---- */
+    {
+        int n;
+        db_close();
+        n = db_execute("UPDATE t_medicine SET stock=1 WHERE med_id='TEST_M01'");
+        if (n == ERR_DB_CONN) {
+            printf("[PASS] 未连接时被正确拦截\n");
+        } else {
+            printf("[FAIL] 期望 %d，实际 %d\n", ERR_DB_CONN, n);
+            return 1;
+        }
+    }
+    
     printf("\n全部测试通过\n");
     return 0;
 }

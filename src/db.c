@@ -73,3 +73,46 @@ const char *db_error(void)
 {
     return g_errbuf;
 }
+
+int db_execute(const char *sql)
+{
+    my_ulonglong affected;
+    if (sql == NULL || sql[0] == '\0'){
+        set_error("db_execute: SQL 语句为空");
+        return ERR_PARAM;
+    }
+    
+    if (g_conn == NULL){
+        set_error("db_execute: 数据库未连接");
+        return ERR_DB_CONN;
+    }
+
+    if (mysql_query(g_conn,sql)!=0){
+        set_error(mysql_error(g_conn));
+        return ERR_DB_EXEC;
+    }
+
+    affected = mysql_affected_rows(g_conn);
+
+    if(affected == (my_ulonglong)-1){
+        set_error(mysql_error(g_conn));
+        return ERR_DB_EXEC;
+    }
+
+    g_errbuf[0] = '\0';
+    return (int)affected;
+}
+
+int db_last_insert_id(void)
+{
+    my_ulonglong id;
+
+    if (g_conn == NULL){
+        set_error("db_last_insert_id: 数据库未连接");
+        return ERR_DB_CONN;
+    }
+
+    id = mysql_insert_id(g_conn);
+    g_errbuf[0] = '\0';
+    return (int)id;
+}

@@ -12,7 +12,8 @@ const char *db_error(void);
 
 int  db_query(const char *sql);        
            
-
+int db_execute(const char *sql);
+int db_last_insert_id(void);
 int  db_begin(void);
 int  db_commit(void);
 int  db_rollback(void);
