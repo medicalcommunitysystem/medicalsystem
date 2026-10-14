@@ -1,0 +1,11 @@
+*.o
+*.a
+*.so
+medical_system
+obj/
+lib/
+data/*.txt
+*.log
+.vscode/
+.idea/
+*.swp
