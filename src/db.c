@@ -223,3 +223,55 @@ int db_field_count(void)
     }
     return (int)mysql_num_fields(g_res);
 }
+
+int db_begin(void)
+{
+    if(g_conn == NULL){
+        set_error("db_begin: 数据库未连接");
+        return ERR_DB_CONN;
+    }
+    db_free_result();
+
+    if(mysql_query(g_conn,"START TRANSACTION") != 0){
+        set_error(mysql_error(g_conn));
+        return ERR_DB_BEGIN;
+    }
+    g_errbuf[0] = '\0';
+    return ERR_OK;
+}
+
+int db_commit(void)
+{
+    if (g_conn == NULL) {
+        set_error("db_commit: 数据库未连接");
+        return ERR_DB_CONN;
+    }
+
+    db_free_result();
+
+    if (mysql_query(g_conn, "COMMIT") != 0) {
+        set_error(mysql_error(g_conn));
+        return ERR_DB_COMMIT;
+    }
+
+    g_errbuf[0] = '\0';
+    return ERR_OK;
+}
+
+int db_rollback(void)
+{
+    if (g_conn == NULL) {
+        set_error("db_rollback: 数据库未连接");
+        return ERR_DB_CONN;
+    }
+
+    db_free_result();
+
+    if (mysql_query(g_conn, "ROLLBACK") != 0) {
+        set_error(mysql_error(g_conn));
+        return ERR_DB_ROLLBACK;
+    }
+
+    g_errbuf[0] = '\0';
+    return ERR_OK;
+}
