@@ -20,6 +20,7 @@
 #define ERR_STOCK_SHORT   -12
 #define ERR_INVALID_QTY   -13
 #define ERR_NO_PERMISSION -14
+#define ERR_INVALID_STATE  -15 
 
 #define MYSQL_ER_DUP_ENTRY      1062   /* 主键/唯一键冲突 */
 #define MYSQL_ER_NO_REFERENCED  1452   /* 外键约束：父记录不存在 */

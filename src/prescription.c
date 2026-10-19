@@ -336,3 +336,295 @@ int presc_exists(int presc_id)
     db_free_result();
     return 1;
 }
+
+
+int presc_cancel(int presc_id)
+{
+    char sql[256];
+    int  r;
+
+    if (presc_id <= 0) {
+        return ERR_PARAM;
+    }
+
+    snprintf(sql, sizeof(sql),
+             "SELECT status FROM t_prescription WHERE presc_id = %d", presc_id);
+
+    if (db_query(sql) != ERR_OK) {
+        db_free_result();
+        return ERR_DB_EXEC;
+    }
+    if (db_fetch_row() != 1) {
+        db_free_result();
+        return ERR_NOT_FOUND;
+    }
+    r = field_int("status");
+    db_free_result();
+
+    if (r == PRESC_STATUS_CANCEL) {
+        return ERR_OK;
+    }
+
+    snprintf(sql, sizeof(sql),
+             "UPDATE t_prescription SET status = %d "
+             "WHERE presc_id = %d AND status = %d",
+             PRESC_STATUS_CANCEL, presc_id, PRESC_STATUS_NORMAL);
+
+    r = db_execute(sql);
+    if (r < 0) {
+        return ERR_DB_EXEC;
+    }
+  
+    return ERR_OK;
+}
+
+static int presc_fetch_list(Prescription *list, int max)
+{
+    int n = 0;
+
+    while (db_fetch_row() == 1) {
+        if (n >= max) {
+            break;
+        }
+
+        memset(&list[n], 0, sizeof(list[n]));
+
+        list[n].presc_id     = field_int("presc_id");
+        list[n].visit_id     = field_int("visit_id");
+        list[n].status       = field_int("status");
+        list[n].total_amount = field_double("total_amount");
+
+        copy_str(list[n].patient_id, sizeof(list[n].patient_id),
+                 db_get_field_by_name("patient_id"));
+        copy_str(list[n].doctor_id, sizeof(list[n].doctor_id),
+                 db_get_field_by_name("doctor_id"));
+        copy_str(list[n].diagnosis, sizeof(list[n].diagnosis),
+                 db_get_field_by_name("diagnosis"));
+        copy_str(list[n].create_time, sizeof(list[n].create_time),
+                 db_get_field_by_name("create_time"));
+
+        n++;
+    }
+
+    db_free_result();
+    return n;
+}
+
+int presc_query_by_patient(const char *patient_id, Prescription *list, int max)
+{
+    char sql[768];
+
+    if (!is_safe_token(patient_id) || list == NULL || max <= 0) {
+        return ERR_PARAM;
+    }
+
+    snprintf(sql, sizeof(sql),
+             "SELECT p.presc_id, p.visit_id, p.patient_id, p.doctor_id, "
+             "p.diagnosis, p.status, p.create_time, "
+             "COALESCE(SUM(d.subtotal), 0) AS total_amount "
+             "FROM t_prescription p "
+             "LEFT JOIN t_presc_detail d ON d.presc_id = p.presc_id "
+             "WHERE p.patient_id = '%s' "
+             "GROUP BY p.presc_id "
+             "ORDER BY p.presc_id DESC", patient_id);
+
+    if (db_query(sql) != ERR_OK) {
+        db_free_result();
+        return ERR_DB_EXEC;
+    }
+    return presc_fetch_list(list, max);
+}
+
+int presc_query_by_doctor(const char *doctor_id, Prescription *list, int max)
+{
+    char sql[768];
+
+    if (!is_safe_token(doctor_id) || list == NULL || max <= 0) {
+        return ERR_PARAM;
+    }
+
+    snprintf(sql, sizeof(sql),
+             "SELECT p.presc_id, p.visit_id, p.patient_id, p.doctor_id, "
+             "p.diagnosis, p.status, p.create_time, "
+             "COALESCE(SUM(d.subtotal), 0) AS total_amount "
+             "FROM t_prescription p "
+             "LEFT JOIN t_presc_detail d ON d.presc_id = p.presc_id "
+             "WHERE p.doctor_id = '%s' "
+             "GROUP BY p.presc_id "
+             "ORDER BY p.presc_id DESC", doctor_id);
+
+    if (db_query(sql) != ERR_OK) {
+        db_free_result();
+        return ERR_DB_EXEC;
+    }
+    return presc_fetch_list(list, max);
+}
+
+static int is_date_ok(const char *s)
+{
+    int i;
+
+    if (s == NULL || strlen(s) != 10) {
+        return 0;
+    }
+    for (i = 0; i < 10; i++) {
+        char c = s[i];
+        if (i == 4 || i == 7) {
+            if (c != '-') {
+                return 0;
+            }
+        } else if (c < '0' || c > '9') {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+int presc_query_by_date(const char *start_date, const char *end_date,
+                        Prescription *list, int max)
+{
+    char sql[1024];
+    char cond[256];
+    int  has_start, has_end;
+
+    if (list == NULL || max <= 0) {
+        return ERR_PARAM;
+    }
+
+    has_start = (start_date != NULL && start_date[0] != '\0');
+    has_end   = (end_date   != NULL && end_date[0]   != '\0');
+
+    if (has_start && !is_date_ok(start_date)) {
+        return ERR_PARAM;
+    }
+    if (has_end && !is_date_ok(end_date)) {
+        return ERR_PARAM;
+    }
+
+    if (has_start && has_end) {
+        snprintf(cond, sizeof(cond),
+                 "p.create_time >= '%s' "
+                 "AND p.create_time < DATE_ADD('%s', INTERVAL 1 DAY)",
+                 start_date, end_date);
+    } else if (has_start) {
+        snprintf(cond, sizeof(cond),
+                 "p.create_time >= '%s'", start_date);
+    } else if (has_end) {
+        snprintf(cond, sizeof(cond),
+                 "p.create_time < DATE_ADD('%s', INTERVAL 1 DAY)", end_date);
+    } else {
+        snprintf(cond, sizeof(cond), "1 = 1");    
+    }
+
+    snprintf(sql, sizeof(sql),
+             "SELECT p.presc_id, p.visit_id, p.patient_id, p.doctor_id, "
+             "p.diagnosis, p.status, p.create_time, "
+             "COALESCE(SUM(d.subtotal), 0) AS total_amount "
+             "FROM t_prescription p "
+             "LEFT JOIN t_presc_detail d ON d.presc_id = p.presc_id "
+             "WHERE %s "
+             "GROUP BY p.presc_id "
+             "ORDER BY p.presc_id DESC", cond);
+
+    if (db_query(sql) != ERR_OK) {
+        db_free_result();
+        return ERR_DB_EXEC;
+    }
+    return presc_fetch_list(list, max);
+}
+
+
+int presc_return(int presc_id)
+{
+    char sql[512];
+    char med_ids[PRESC_MAX_DETAILS][PRESC_MED_ID_LEN];
+    int  qtys[PRESC_MAX_DETAILS];
+    int  n = 0;
+    int  i, r;
+
+    if (presc_id <= 0) {
+        return ERR_PARAM;
+    }
+
+    snprintf(sql, sizeof(sql),
+             "SELECT status FROM t_prescription WHERE presc_id = %d", presc_id);
+
+    if (db_query(sql) != ERR_OK) {
+        db_free_result();
+        return ERR_DB_EXEC;
+    }
+    if (db_fetch_row() != 1) {
+        db_free_result();
+        return ERR_NOT_FOUND;
+    }
+    r = field_int("status");
+    db_free_result();
+
+    if (r == PRESC_STATUS_CANCEL) {
+        return ERR_INVALID_STATE;    
+    }
+    if (r == PRESC_STATUS_RETURN) {
+        return ERR_OK;            
+    }
+
+    if (db_begin() != ERR_OK) {
+        return ERR_DB_EXEC;
+    }
+
+    snprintf(sql, sizeof(sql),
+             "UPDATE t_prescription SET status = %d "
+             "WHERE presc_id = %d AND status = %d",
+             PRESC_STATUS_RETURN, presc_id, PRESC_STATUS_NORMAL);
+
+    r = db_execute(sql);
+    if (r != 1) {
+        db_rollback();
+        return (r < 0) ? ERR_DB_EXEC : ERR_INVALID_STATE;
+    }
+
+
+    snprintf(sql, sizeof(sql),
+             "SELECT med_id, quantity FROM t_presc_detail "
+             "WHERE presc_id = %d ORDER BY detail_id", presc_id);
+
+    if (db_query(sql) != ERR_OK) {
+        db_free_result();
+        db_rollback();
+        return ERR_DB_EXEC;
+    }
+
+    while (db_fetch_row() == 1) {
+        if (n >= PRESC_MAX_DETAILS) {
+            break;
+        }
+        copy_str(med_ids[n], PRESC_MED_ID_LEN,
+                 db_get_field_by_name("med_id"));
+        qtys[n] = field_int("quantity");
+        n++;
+    }
+    db_free_result();
+
+    if (n == 0) {
+        db_rollback();
+        return ERR_INVALID_STATE;    
+    }
+
+    for (i = 0; i < n; i++) {
+        snprintf(sql, sizeof(sql),
+                 "UPDATE t_medicine SET stock = stock + %d WHERE med_id = '%s'",
+                 qtys[i], med_ids[i]);
+
+        r = db_execute(sql);
+        if (r != 1) {
+            db_rollback();
+            return (r < 0) ? ERR_DB_EXEC : ERR_NOT_FOUND;
+        }
+    }
+
+    if (db_commit() != ERR_OK) {
+        db_rollback();
+        return ERR_DB_EXEC;
+    }
+
+    return ERR_OK;
+}

@@ -17,6 +17,7 @@
 
 #define PRESC_STATUS_CANCEL  0
 #define PRESC_STATUS_NORMAL  1
+#define PRESC_STATUS_RETURN  2 
 
 typedef struct {
     int    presc_id;                    
