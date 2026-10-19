@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "menu.h"
+#include "menu_c.h"
 #include "member_b.h"
 #include "appointment.h"
 #include "patient.h"
@@ -339,7 +340,7 @@ static void patient_menu(const UserSession *session)
         } else if (option==3) { menu_patient_appointments(session); }
         else if (option==4) { change_password(session); }
         else if (option==5) { list_medicines(session); }
-        else if (option==6) { list_prescriptions(session); }
+        else if (option==6) { (void)menu_c_presc_view(session); }
         else if (option==7) { menu_member_b(session); }
         else { puts("无效选择。"); }
     }
@@ -390,9 +391,9 @@ static void staff_menu(const UserSession *session)
     int option;
     for (;;) {
         if (session->role==ROLE_ADMIN) {
-            puts("管理员：1 患者管理 / 2 全部预约 / 3 修改密码 / 4 药品 / 5 处方 / 7 医生、就诊与病历 / 0 退出登录");
+            puts("管理员：1 患者管理 / 2 全部预约 / 3 修改密码 / 4 药品 / 5 处方 / 6 药品管理 / 7 医生、就诊与病历 / 0 退出登录");
         } else {
-            puts("医生：1 今日待就诊 / 3 修改密码 / 4 药品 / 5 本人处方 / 7 接诊与病历 / 0 退出登录");
+            puts("医生：1 今日待就诊 / 3 修改密码 / 4 药品 / 5 本人处方 / 6 药品管理 / 7 接诊与病历 / 0 退出登录");
         }
         option=choice();
         if (option==0 || option==-1) { return; }
@@ -411,6 +412,10 @@ static void staff_menu(const UserSession *session)
         } else if (option==3) { change_password(session); }
         else if (option==4) { list_medicines(session); }
         else if (option==5) { list_prescriptions(session); }
+        else if (option==6) {
+            if (session->role==ROLE_ADMIN) { (void)menu_c_medicine(session); }
+            else { (void)menu_c_prescription(session); }
+        }
         else if (option==7) { menu_member_b(session); }
         else { puts("无效选择。"); }
     }
