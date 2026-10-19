@@ -1,5 +1,5 @@
 #include <string.h>
-#include <strdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "medicine.h"
@@ -12,7 +12,7 @@ int med_query_all(Medicine *list,int max)
 {
     int count = 0;
 
-    if (list = NULL || max < 0){
+    if (list == NULL || max < 0){
         return ERR_PARAM;
     }
 
@@ -184,6 +184,191 @@ int med_add(const Medicine *med)
             return ERR_DB_DUP;
         }
         return r;              
+    }
+
+    return ERR_OK;
+}
+
+// 修改药品信息，用med_id定位，只更新名称，分类，单价，单位，状态
+int med_update(const Medicine *med)
+{
+    char sql[512];
+    int  r;
+
+    if (med == NULL || med->med_id[0] == '\0' || med->med_name[0] == '\0') {
+        return ERR_PARAM;
+    }
+    if (med->price < 0.0) {
+        return ERR_PARAM;
+    }
+
+    snprintf(sql, sizeof(sql),
+             "SELECT 1 FROM t_medicine WHERE med_id = '%s'", med->med_id);
+    if (db_query(sql) != ERR_OK) {
+        db_free_result();
+        return ERR_DB_EXEC;
+    }
+    r = (db_fetch_row() == 1) ? 1 : 0;
+    db_free_result();
+    if (r == 0) {
+        return ERR_NOT_FOUND;
+    }
+
+    snprintf(sql, sizeof(sql),
+             "UPDATE t_medicine SET "
+             "med_name = '%s', category = '%s', unit = '%s', "
+             "price = %.2f, status = %d "
+             "WHERE med_id = '%s'",
+             med->med_name,
+             med->category,
+             med->unit,
+             med->price,
+             med->status,
+             med->med_id);
+
+    if (db_execute(sql) < 0) {
+        return ERR_DB_EXEC;
+    }
+
+    return ERR_OK;
+}
+
+// 删除药品
+int med_delete(const char *med_id)
+{
+    char sql[256];
+    int  r;
+
+    if (med_id == NULL || med_id[0] == '\0') {
+        return ERR_PARAM;
+    }
+
+    snprintf(sql, sizeof(sql),
+             "SELECT 1 FROM t_medicine WHERE med_id = '%s' AND status = 1",
+             med_id);
+    if (db_query(sql) != ERR_OK) {
+        db_free_result();
+        return ERR_DB_EXEC;
+    }
+    r = (db_fetch_row() == 1) ? 1 : 0;
+    db_free_result();
+    if (r == 0) {
+        return ERR_NOT_FOUND;
+    }
+
+    snprintf(sql, sizeof(sql),
+             "UPDATE t_medicine SET status = 0 WHERE med_id = '%s'", med_id);
+
+    if (db_execute(sql) < 0) {
+        return ERR_DB_EXEC;
+    }
+
+    return ERR_OK;
+}
+
+// 查询指定药品的数量，用med_id查询
+int med_get_stock(const char *med_id, int *stock)
+{
+    char        sql[256];
+    const char *p;
+
+    if (med_id == NULL || med_id[0] == '\0' || stock == NULL) {
+        return ERR_PARAM;
+    }
+
+    *stock = 0;    
+
+    snprintf(sql, sizeof(sql),
+             "SELECT stock FROM t_medicine WHERE med_id = '%s'", med_id);
+
+    if (db_query(sql) != ERR_OK) {
+        db_free_result();
+        return ERR_DB_EXEC;
+    }
+
+    if (db_fetch_row() != 1) {
+        db_free_result();
+        return ERR_NOT_FOUND;
+    }
+
+    p = db_get_field_by_name("stock");
+    *stock = (p != NULL) ? atoi(p) : 0;
+
+    db_free_result();
+    return ERR_OK;
+}
+
+// 库存数量增加
+int med_stock_in(const char *med_id, int qty)
+{
+    char sql[256];
+    int  r;
+
+    if (med_id == NULL || med_id[0] == '\0' || qty <= 0) {
+        return ERR_PARAM;
+    }
+
+    snprintf(sql, sizeof(sql),
+             "SELECT 1 FROM t_medicine WHERE med_id = '%s'", med_id);
+    if (db_query(sql) != ERR_OK) {
+        db_free_result();
+        return ERR_DB_EXEC;
+    }
+    r = (db_fetch_row() == 1) ? 1 : 0;
+    db_free_result();
+    if (r == 0) {
+        return ERR_NOT_FOUND;
+    }
+
+    snprintf(sql, sizeof(sql),
+             "UPDATE t_medicine SET stock = stock + %d WHERE med_id = '%s'",
+             qty, med_id);
+
+    r = db_execute(sql);
+    if (r < 0) {
+        return ERR_DB_EXEC;
+    }
+    if (r == 0) {
+        return ERR_NOT_FOUND;
+    }
+
+    return ERR_OK;
+}
+
+// 库存数量减少
+int med_stock_out(const char *med_id, int qty)
+{
+    char sql[256];
+    int  r;
+
+    if (med_id == NULL || med_id[0] == '\0' || qty <= 0) {
+        return ERR_PARAM;
+    }
+
+    snprintf(sql, sizeof(sql),
+             "UPDATE t_medicine SET stock = stock - %d "
+             "WHERE med_id = '%s' AND stock >= %d",
+             qty, med_id, qty);
+
+    r = db_execute(sql);
+    if (r < 0) {
+        return ERR_DB_EXEC;
+    }
+
+    if (r == 0) {
+        snprintf(sql, sizeof(sql),
+                 "SELECT 1 FROM t_medicine WHERE med_id = '%s'", med_id);
+        if (db_query(sql) != ERR_OK) {
+            db_free_result();
+            return ERR_DB_EXEC;
+        }
+        r = (db_fetch_row() == 1) ? 1 : 0;
+        db_free_result();
+
+        if (r == 0) {
+            return ERR_NOT_FOUND;
+        }
+        return ERR_STOCK_SHORT;
     }
 
     return ERR_OK;
