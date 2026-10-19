@@ -26,5 +26,6 @@ int db_field_count(void);
 int  db_begin(void);
 int  db_commit(void);
 int  db_rollback(void);
+int db_errno(void);
 
 #endif
