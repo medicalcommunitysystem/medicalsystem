@@ -22,6 +22,12 @@
 #define ERR_NO_PERMISSION -14
 #define ERR_INVALID_STATE  -15 
 
+#define ERR_IO            -16
+#define ERR_LIMIT         -17
+
+#define USERNAME_MAX_CHARS 50
+#define USERNAME_CAPACITY (USERNAME_MAX_CHARS * 4 + 1)
+
 #define MYSQL_ER_DUP_ENTRY      1062   /* 主键/唯一键冲突 */
 #define MYSQL_ER_NO_REFERENCED  1452   /* 外键约束：父记录不存在 */
 #define MYSQL_ER_ROW_IS_REFERENCED 1451 /* 外键约束：被子表引用，无法删除 */
@@ -29,4 +35,4 @@
 #define LOW_STOCK   50 
 #define PRESC_MAX   20  
 
-#endif 
+#endif

@@ -1,0 +1,27 @@
+# A 成员构建入口，不覆盖小组最终 Makefile。
+CC = gcc
+MYSQL_ROOT ?= D:/sql/MySQL/MySQL Server 8.0
+MYSQL_COMPAT_INCLUDE ?= D:/mysql-dev/include
+CPPFLAGS += -Iinclude
+CFLAGS += -std=c11 -Wall -Wextra -Wpedantic -Werror -O2
+SOURCES = src/session.c src/member_a_internal.c src/password.c src/auth.c \
+          src/patient.c src/appointment.c src/db.c src/medicine.c src/prescription.c
+
+ifeq ($(OS),Windows_NT)
+CPPFLAGS += -I"$(MYSQL_COMPAT_INCLUDE)" -I"$(MYSQL_ROOT)/include"
+LDLIBS += "$(MYSQL_ROOT)/lib/libmysql.lib" -lbcrypt
+EXT = .exe
+else
+CPPFLAGS += $(shell mysql_config --cflags)
+LDLIBS += $(shell mysql_config --libs) -lcrypto
+EXT =
+endif
+
+.PHONY: all
+all: build/medical_system$(EXT)
+
+build:
+	mkdir build
+
+build/medical_system$(EXT): $(SOURCES) src/menu.c src/main.c $(wildcard include/*.h) | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(SOURCES) src/menu.c src/main.c -o $@ $(LDLIBS)

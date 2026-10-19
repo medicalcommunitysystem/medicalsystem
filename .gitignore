@@ -9,3 +9,9 @@ data/*.txt
 .vscode/
 .idea/
 *.swp
+build/
+*.exe
+*.dll
+.env
+.env.*
+!.env.example
