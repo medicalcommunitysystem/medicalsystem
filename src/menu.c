@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "menu.h"
+#include "member_b.h"
 #include "appointment.h"
 #include "patient.h"
 #include "medicine.h"
@@ -323,7 +324,7 @@ static void patient_menu(const UserSession *session)
 {
     int option;
     for (;;) {
-        puts("患者：1 本人档案 / 2 修改联系方式 / 3 预约挂号 / 4 修改密码 / 5 药品 / 6 本人处方 / 0 退出登录");
+        puts("患者：1 本人档案 / 2 修改联系方式 / 3 预约挂号 / 4 修改密码 / 5 药品 / 6 本人处方 / 7 就诊与病历 / 0 退出登录");
         option=choice();
         if (option==0 || option==-1) { return; }
         if (option==1) {
@@ -339,6 +340,7 @@ static void patient_menu(const UserSession *session)
         else if (option==4) { change_password(session); }
         else if (option==5) { list_medicines(session); }
         else if (option==6) { list_prescriptions(session); }
+        else if (option==7) { menu_member_b(session); }
         else { puts("无效选择。"); }
     }
 }
@@ -388,9 +390,9 @@ static void staff_menu(const UserSession *session)
     int option;
     for (;;) {
         if (session->role==ROLE_ADMIN) {
-            puts("管理员：1 患者管理 / 2 全部预约 / 3 修改密码 / 4 药品 / 5 处方 / 0 退出登录");
+            puts("管理员：1 患者管理 / 2 全部预约 / 3 修改密码 / 4 药品 / 5 处方 / 7 医生、就诊与病历 / 0 退出登录");
         } else {
-            puts("医生：1 今日待就诊 / 3 修改密码 / 4 药品 / 5 本人处方 / 0 退出登录");
+            puts("医生：1 今日待就诊 / 3 修改密码 / 4 药品 / 5 本人处方 / 7 接诊与病历 / 0 退出登录");
         }
         option=choice();
         if (option==0 || option==-1) { return; }
@@ -409,7 +411,8 @@ static void staff_menu(const UserSession *session)
         } else if (option==3) { change_password(session); }
         else if (option==4) { list_medicines(session); }
         else if (option==5) { list_prescriptions(session); }
-        else { puts("无效选择。接诊/病历入口由 B 提供，当前远程仓库尚无该接口。"); }
+        else if (option==7) { menu_member_b(session); }
+        else { puts("无效选择。"); }
     }
 }
 

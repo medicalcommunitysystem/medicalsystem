@@ -1,0 +1,113 @@
+PASS UTF8 Chinese accepted
+PASS UTF8 char limit
+PASS invalid UTF8 rejected
+PASS required empty rejected
+PASS optional empty accepted
+PASS null rejected
+PASS initialize legacy admin
+PASS admin auth
+PASS bad auth
+PASS login injection rejected
+PASS doctor auto id
+PASS doctor duplicate username
+PASS cross admin username duplicate
+PASS doctor second id
+PASS doctor login
+PASS case-sensitive password
+PASS second doctor login
+PASS initialize patient1
+PASS initialize patient2
+PASS patient login
+PASS patient2 login
+PASS cross patient username duplicate
+PASS patient cannot add doctor
+PASS admin lists doctors
+PASS page limit
+PASS pagination
+PASS quoted name round trip
+PASS doctor sees only self
+PASS doctor cannot see peer detail
+PASS self profile update
+PASS self title privilege blocked
+PASS admin title update
+PASS same-value update succeeds
+PASS patient cannot update doctor
+PASS doctor cannot disable
+PASS admin disable
+PASS disable idempotent
+PASS inactive login denied
+PASS stale inactive session denied
+PASS patient active list only
+PASS patient inactive detail hidden
+PASS null fields safe
+PASS 50 Chinese characters accepted
+PASS Chinese roundtrip no byte truncation
+PASS pending doctor today only
+PASS patient cannot list pending
+PASS patient cannot take visit
+PASS wrong doctor appointment
+PASS future appointment rejected
+PASS cancelled appointment rejected
+PASS missing appointment
+PASS invalid vitals rejected
+PASS atomic visit success
+PASS appointment state committed
+PASS repeated take rejected
+PASS one visit per appointment
+PASS patient owns visit
+PASS chief complaint preserved
+PASS other patient cannot read
+PASS other doctor cannot read
+PASS patient cannot query someone else
+PASS patient cannot query doctor list
+PASS forced appointment write failure
+PASS failed visit insert rolled back
+PASS failed appointment state unchanged
+PASS retry after rollback succeeds
+PASS nested transaction preserved
+PASS outer rollback
+PASS other patient fixture visit
+PASS admin sees all visits
+PASS patient list filtered
+PASS wrong doctor cannot write medical record
+PASS patient cannot write medical record
+PASS missing visit record
+PASS empty allergy accepted
+PASS one medical record per visit
+PASS medical record visible to owner
+PASS medical record hidden from other patient
+PASS medical record hidden from other doctor
+PASS medical query self restriction
+PASS author can update within24h
+PASS same content update succeeds
+PASS admin read only
+PASS other doctor cannot modify
+PASS recent update does not reset24h
+PASS exact24h boundary locked
+PASS future creation time locked
+PASS null allergy rejected
+PASS inactive patient rejected
+PASS inactive patient cannot visit
+PASS inactive patient login rejected
+PASS D999 exhaustion rejected
+PASS overflow did not insert
+PASS new doctor password hashed
+PASS create doctor for lock test
+PASS wrong password counted by A
+PASS wrong password counted by A
+PASS wrong password counted by A
+PASS wrong password counted by A
+PASS fifth wrong password locks
+PASS correct password blocked while locked
+PASS A register patient
+PASS A auth registered patient
+PASS database date available
+PASS A books B doctor
+PASS B takes A appointment
+PASS C prescribes B visit
+PASS C stock deducted
+PASS B writes medical record
+PASS patient sees own visit
+PASS patient sees own medical record
+PASS patient prescription query
+RESULT: 112 checks, 0 failures

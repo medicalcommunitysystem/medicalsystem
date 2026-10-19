@@ -39,6 +39,13 @@ int main(int argc, char **argv)
         fputs("请先在目标库应用 sql/member_a_upgrade.sql；不要重新导入会清表的 init_db.sql。\n",stderr);
         db_close(); return 1;
     }
+    rc=db_query("SELECT version FROM t_member_b_schema WHERE version=1");
+    if (rc==ERR_OK && db_fetch_row()!=1) { rc=ERR_INVALID_STATE; }
+    db_free_result();
+    if(rc!=ERR_OK) {
+        fputs("请先应用 sql/member_b_upgrade.sql。\n",stderr);
+        db_close(); return 1;
+    }
     if (argc==2) {
         rc=menu_initialize_password();
         rc=rc==AUTH_OK || rc==AUTH_ERR_NOT_LOGGED_IN ? 0 : 1;
