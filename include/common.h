@@ -13,14 +13,19 @@
 #define ERR_DB_BEGIN      -6   
 #define ERR_DB_COMMIT     -7   
 #define ERR_DB_ROLLBACK   -8   
+
 #define ERR_VISIT_FULL    -9
 #define ERR_NOT_FOUND     -10
 #define ERR_DB_DUP        -11
 #define ERR_STOCK_SHORT   -12
 #define ERR_INVALID_QTY   -13
+#define ERR_NO_PERMISSION -14
 
 #define MYSQL_ER_DUP_ENTRY      1062   /* 主键/唯一键冲突 */
 #define MYSQL_ER_NO_REFERENCED  1452   /* 外键约束：父记录不存在 */
 #define MYSQL_ER_ROW_IS_REFERENCED 1451 /* 外键约束：被子表引用，无法删除 */
+
+#define LOW_STOCK   50 
+#define PRESC_MAX   20  
 
 #endif 

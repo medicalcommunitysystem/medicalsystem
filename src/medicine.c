@@ -16,7 +16,7 @@ int med_query_all(Medicine *list,int max)
         return ERR_PARAM;
     }
 
-    if (db_query("SELECT med_id, med_name, category, unit, price, stock, status "
+    if (db_query("SELECT med_id, med_name, spec, unit, price, stock, status "
                  "FROM t_medicine WHERE status = 1 "
                  "ORDER BY med_id")!= ERR_OK){
                     db_free_result();
@@ -38,9 +38,9 @@ int med_query_all(Medicine *list,int max)
             snprintf(list[count].med_name, sizeof(list[count].med_name), "%s", p);
         }
 
-        p = db_get_field_by_name("category");
+        p = db_get_field_by_name("spec");
         if (p != NULL) {
-            snprintf(list[count].category, sizeof(list[count].category), "%s", p);
+            snprintf(list[count].spec, sizeof(list[count].spec), "%s", p);
         }
 
         p = db_get_field_by_name("unit");
@@ -74,8 +74,7 @@ int med_exists(const char *med_id)
     }
 
     snprintf(sql, sizeof(sql),
-             "SELECT 1 FROM t_medicine WHERE med_id = '%s' AND status = 1",
-             med_id);
+             "SELECT 1 FROM t_medicine WHERE med_id = '%s'",med_id);
 
     if (db_query(sql) != ERR_OK) {
         db_free_result();
@@ -86,6 +85,31 @@ int med_exists(const char *med_id)
         found = 1;
     }
 
+    db_free_result();
+    return found;
+}
+
+// 判断药品是否可用
+int med_exists_active(const char *med_id)
+{
+    char sql[256];
+    int  found = 0;
+
+    if (med_id == NULL || med_id[0] == '\0') {
+        return ERR_PARAM;
+    }
+
+    snprintf(sql, sizeof(sql),
+             "SELECT 1 FROM t_medicine WHERE med_id = '%s' AND status = 1",
+             med_id);
+
+    if (db_query(sql) != ERR_OK) {
+        db_free_result();
+        return ERR_DB_EXEC;
+    }
+    if (db_fetch_row() == 1) {
+        found = 1;
+    }
     db_free_result();
     return found;
 }
@@ -103,7 +127,7 @@ int med_get_by_id(const char *med_id, Medicine *out)
     memset(out, 0, sizeof(Medicine));
 
     snprintf(sql, sizeof(sql),
-             "SELECT med_id, med_name, category, unit, price, stock, status "
+             "SELECT med_id, med_name, spec, unit, price, stock, status "
              "FROM t_medicine WHERE med_id = '%s'",
              med_id);
 
@@ -123,8 +147,8 @@ int med_get_by_id(const char *med_id, Medicine *out)
     p = db_get_field_by_name("med_name");
     if (p != NULL) snprintf(out->med_name, sizeof(out->med_name), "%s", p);
 
-    p = db_get_field_by_name("category");
-    if (p != NULL) snprintf(out->category, sizeof(out->category), "%s", p);
+    p = db_get_field_by_name("spec");
+    if (p != NULL) snprintf(out->spec, sizeof(out->spec), "%s", p);
 
     p = db_get_field_by_name("unit");
     if (p != NULL) snprintf(out->unit, sizeof(out->unit), "%s", p);
@@ -168,19 +192,18 @@ int med_add(const Medicine *med)
 
     snprintf(sql, sizeof(sql),
              "INSERT INTO t_medicine "
-             "(med_id, med_name, category, unit, price, stock, status) "
-             "VALUES ('%s', '%s', '%s', '%s', %.2f, %d, %d)",
+             "(med_id, med_name, spec, unit, price, stock) "
+             "VALUES ('%s', '%s', '%s', '%s', %.2f, %d)",
              med->med_id,
              med->med_name,
-             med->category,
+             med->spec,
              med->unit,
              med->price,
-             med->stock,
-             med->status);
+             med->stock);
 
     r = db_execute(sql);
     if (r < 0) {
-        if (db_errno()==1062){
+        if (db_errno()== MYSQL_ER_DUP_ENTRY){
             return ERR_DB_DUP;
         }
         return r;              
@@ -216,11 +239,11 @@ int med_update(const Medicine *med)
 
     snprintf(sql, sizeof(sql),
              "UPDATE t_medicine SET "
-             "med_name = '%s', category = '%s', unit = '%s', "
+             "med_name = '%s', spec = '%s', unit = '%s', "
              "price = %.2f, status = %d "
              "WHERE med_id = '%s'",
              med->med_name,
-             med->category,
+             med->spec,
              med->unit,
              med->price,
              med->status,
@@ -308,14 +331,10 @@ int med_stock_in(const char *med_id, int qty)
         return ERR_PARAM;
     }
 
-    snprintf(sql, sizeof(sql),
-             "SELECT 1 FROM t_medicine WHERE med_id = '%s'", med_id);
-    if (db_query(sql) != ERR_OK) {
-        db_free_result();
-        return ERR_DB_EXEC;
+    r = med_exists(med_id);
+    if (r < 0) {
+        return r;
     }
-    r = (db_fetch_row() == 1) ? 1 : 0;
-    db_free_result();
     if (r == 0) {
         return ERR_NOT_FOUND;
     }
@@ -326,10 +345,7 @@ int med_stock_in(const char *med_id, int qty)
 
     r = db_execute(sql);
     if (r < 0) {
-        return ERR_DB_EXEC;
-    }
-    if (r == 0) {
-        return ERR_NOT_FOUND;
+        return r;
     }
 
     return ERR_OK;
@@ -347,29 +363,38 @@ int med_stock_out(const char *med_id, int qty)
 
     snprintf(sql, sizeof(sql),
              "UPDATE t_medicine SET stock = stock - %d "
-             "WHERE med_id = '%s' AND stock >= %d",
+             "WHERE med_id = '%s' AND status = 1 AND stock >= %d",
              qty, med_id, qty);
 
     r = db_execute(sql);
     if (r < 0) {
-        return ERR_DB_EXEC;
+        return r;
+    }
+    if (r > 0) {
+        return ERR_OK;
     }
 
-    if (r == 0) {
+    {
+        int exists = 0;
+        int status = 0;
+        const char *p;
+
         snprintf(sql, sizeof(sql),
-                 "SELECT 1 FROM t_medicine WHERE med_id = '%s'", med_id);
+                 "SELECT status FROM t_medicine WHERE med_id = '%s'", med_id);
         if (db_query(sql) != ERR_OK) {
             db_free_result();
             return ERR_DB_EXEC;
         }
-        r = (db_fetch_row() == 1) ? 1 : 0;
+        if (db_fetch_row() == 1) {
+            exists = 1;
+            p = db_get_field_by_name("status");
+            status = (p != NULL) ? atoi(p) : 0;
+        }
         db_free_result();
 
-        if (r == 0) {
-            return ERR_NOT_FOUND;
+        if (!exists || status != 1) {
+            return ERR_NOT_FOUND;      
         }
         return ERR_STOCK_SHORT;
     }
-
-    return ERR_OK;
 }

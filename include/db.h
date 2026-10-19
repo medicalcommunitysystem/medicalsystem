@@ -8,9 +8,7 @@
 int  db_connect(const char *host, const char *user,
                 const char *pass, const char *dbname);
 void db_close(void);
-const char *db_error(void);      
-
-int  db_query(const char *sql);        
+const char *db_error(void);            
            
 int db_execute(const char *sql);
 int db_last_insert_id(void);
