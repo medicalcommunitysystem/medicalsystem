@@ -393,7 +393,7 @@ static void staff_menu(const UserSession *session)
         if (session->role==ROLE_ADMIN) {
             puts("管理员：1 患者管理 / 2 全部预约 / 3 修改密码 / 4 药品 / 5 处方 / 6 药品管理 / 7 医生、就诊与病历 / 0 退出登录");
         } else {
-            puts("医生：1 今日待就诊 / 3 修改密码 / 4 药品 / 5 本人处方 / 6 药品管理 / 7 接诊与病历 / 0 退出登录");
+            puts("医生：1 今日待就诊 / 3 修改密码 / 4 药品 / 5 本人处方 / 6 处方管理 / 7 接诊与病历 / 0 退出登录");
         }
         option=choice();
         if (option==0 || option==-1) { return; }

@@ -397,17 +397,29 @@ int menu_c_medicine(const UserSession *session)
 
 /* ---------------- M05 处方 ---------------- */
 
-static int c_show_presc_detail(int presc_id)
+static int c_show_presc_detail(const UserSession *session, int presc_id)
 {
     Prescription p;
     PrescDetail list[PRESC_MAX_DETAILS];
     double sum = 0.0;
     int rc, n, i;
 
+    if (c_require(session) != ERR_OK) {
+        return ERR_NO_PERMISSION;
+    }
+
     rc = presc_get_by_id(presc_id, &p);
     if (rc != ERR_OK) {
         c_show(rc);
         return rc;
+    }
+
+    // Check ownership before displaying header fields or loading detail rows.
+    if ((session->role == ROLE_PATIENT && strcmp(p.patient_id, session->user_id) != 0) ||
+        (session->role == ROLE_DOCTOR && strcmp(p.doctor_id, session->user_id) != 0) ||
+        (session->role != ROLE_PATIENT && session->role != ROLE_DOCTOR && session->role != ROLE_ADMIN)) {
+        c_show(AUTH_ERR_FORBIDDEN);
+        return AUTH_ERR_FORBIDDEN;
     }
 
     puts("");
@@ -496,8 +508,7 @@ int menu_c_presc_view(const UserSession *session)
         if (id == 0) {
             return ERR_OK;
         }
-        (void)c_show_presc_detail(id);
-        return ERR_OK;
+        return c_show_presc_detail(session, id);
     }
 }
 
